@@ -1,34 +1,56 @@
 import os
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy import Column, String, BigInteger, Integer, Boolean, ForeignKey
+import aiosqlite
 
-# Получаем защищенную строку подключения от Railway
-DATABASE_URL = os.getenv("DATABASE_URL")
-if DATABASE_URL and DATABASE_URL.startswith("postgresql://"):
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
-
-engine = create_async_engine(DATABASE_URL, echo=False)
-async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-Base = declarative_base()
-
-class UserProfile(Base):
-    __tablename__ = "user_profiles"
-    user_id = Column(BigInteger, primary_key=True)
-    account_type = Column(String, default="personal")  # personal / business
-    is_active = Column(Boolean, default=True)
-
-class SearchSlot(Base):
-    __tablename__ = "search_slots"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, ForeignKey("user_profiles.user_id"))
-    slot_index = Column(Integer)  # 1 для личных, 1-10 для бизнеса
-    region = Column(String, nullable=True)
-    city = Column(String, nullable=True)
-    district = Column(String, nullable=True)
-    property_type = Column(String, nullable=True)  # commercial / land / residential
-    discount_trigger = Column(Integer, default=20)  # процент дисконта (>10, >20, >30)
+DB_FILE = "xo_base.db"
 
 async def init_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """Инициализация таблиц внутри локального файла xo_base.db"""
+    async with aiosqlite.connect(DB_FILE) as db:
+        # Таблица профилей пользователей
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS user_profiles (
+                user_id INTEGER PRIMARY KEY,
+                account_type TEXT DEFAULT 'personal',
+                current_step TEXT DEFAULT 'main'
+            )
+        ''')
+        # Таблица 10 активных слотов поиска для каждого пользователя
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS search_slots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                slot_index INTEGER,
+                region TEXT,
+                city TEXT,
+                district TEXT,
+                property_type TEXT,
+                land_status TEXT,
+                min_price INTEGER,
+                max_price INTEGER,
+                discount_trigger INTEGER DEFAULT 20,
+                is_active INTEGER DEFAULT 0
+            )
+        ''')
+        await db.commit()
+
+async def register_user(user_id: int):
+    async with aiosqlite.connect(DB_FILE) as db:
+        await db.execute("INSERT OR IGNORE INTO user_profiles (user_id) VALUES (?)", (user_id,))
+        # Сразу создаем 10 пустых слотов для управления
+        for i in range(1, 11):
+            await db.execute("""
+                INSERT OR IGNORE INTO search_slots (user_id, slot_index) 
+                VALUES (?, ?)
+            """, (user_id, i))
+        await db.commit()
+
+async def update_slot(user_id: int, slot_index: int, field: str, value):
+    async with aiosqlite.connect(DB_FILE) as db:
+        query = f"UPDATE search_slots SET {field} = ?, is_active = 1 WHERE user_id = ? AND slot_index = ?"
+        await db.execute(query, (value, user_id, slot_index))
+        await db.commit()
+
+async def get_slots(user_id: int):
+    async with aiosqlite.connect(DB_FILE) as db:
+        async with db.execute("SELECT * FROM search_slots WHERE user_id = ?", (user_id,)) as cursor:
+            return await cursor.fetchall()
