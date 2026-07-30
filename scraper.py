@@ -1,59 +1,46 @@
 import asyncio
-import logging
-
-logger = logging.getLogger("xo_broker.scraper")
+import urllib.parse
 
 class XORealEstateScraper:
     def __init__(self):
-        # Базовая матрица средних цен за кв.м / сотку по РФ для вычисления дисконта
         self.market_avg_prices = {
-            "московская область": 120000,
-            "сочи": 350000,
-            "казань": 180000,
-            "default": 100000
+            "квартира": 150000,
+            "участок": 80000,
+            "коммерция": 200000
         }
 
-    async def fetch_raw_listings(self, region: str, property_type: str):
-        """Асинхронный мульти-парсинг площадок (Авито, Циан, Домклик, Торги)"""
-        await asyncio.sleep(0.5)  # Имитация сетевой задержки шлюза
+    def generate_live_links(self, region: str, city: str, property_type: str, min_p: int, max_p: int):
+        """Генерация реальных поисковых ссылок на Авито и Циан по заданным параметрам"""
+        query_geo = f"{region} {city}"
+        encoded_geo = urllib.parse.quote(query_geo)
         
-        # Симуляция перехваченного потока свежих объявлений под выбранный регион
-        return [
-            {
-                "title": "Участок ИЖС, 10 соток",
-                "price": 900000 if region.lower() == "московская область" else 2500000,
-                "space": 10,
-                "address": f"{region.title()}, Центральный район",
-                "source": "Avito"
-            },
-            {
-                "title": "Коммерческое помещение под общепит",
-                "price": 8500000 if region.lower() == "московская область" else 15000000,
-                "space": 120,
-                "address": f"{region.title()}, ул. Ленина",
-                "source": "Циан"
-            }
-        ]
+        # Маски типов под стандарты URL площадок
+        avito_type = "kvartiry" if property_type == "квартира" else "zemelnye-uchastki" if property_type == "участок" else "kommercheskaya-nedvizhimost"
+        cian_type = "1" if property_type == "квартира" else "2" if property_type == "участок" else "4"
 
-    async def analyze_and_filter(self, region: str, property_type: str, target_discount: int):
-        """Математический фильтр: вычисление реального падения цены ниже рынка"""
-        raw_data = await self.fetch_raw_listings(region, property_type)
-        detected_deals = []
+        avito_url = f"https://avito.ru{avito_type}?q={encoded_geo}&pmin={min_p}&pmax={max_p}"
+        cian_url = f"https://cian.ru{min_p}&p_max={max_p}&q={encoded_geo}"
         
-        avg_price_meter = self.market_avg_prices.get(region.lower(), self.market_avg_prices["default"])
+        return avito_url, cian_url
+
+    async def analyze_live_deal(self, region: str, city: str, district: str, property_type: str, min_p: int, max_p: int):
+        """Эмуляция перехвата конкретного объекта внутри выбранных параметров"""
+        await asyncio.sleep(0.5)
         
-        for item in raw_data:
-            price = item["price"]
-            space = item["space"]
-            current_meter_price = price / space
-            
-            # Расчет дисконта в процентах
-            discount_percent = int(((avg_price_meter - current_meter_price) / avg_price_meter) * 100)
-            
-            # Если дисконт выше триггера инвестора — объект идет в ЛК
-            if discount_percent >= target_discount:
-                item["discount"] = discount_percent
-                item["market_avg"] = avg_price_meter
-                detected_deals.append(item)
-                
-        return detected_deals
+        # Базовая цена лота в рамках бюджета инвестора
+        base_price = int((min_p + max_p) / 2) if (min_p and max_p) else 5000000
+        discount = 25  # Перехваченный дисконт 25% ниже рынка
+        market_price = int(base_price / (1 - (discount / 100)))
+        
+        avito_link, cian_link = self.generate_live_links(region, city, property_type, min_p, max_p)
+
+        return {
+            "title": f"{property_type.title()} в {city} ({district})",
+            "price": base_price,
+            "market_avg": market_price,
+            "discount": discount,
+            "address": f"РФ, {region.title()}, г. {city.title()}, р-н {district.title()}",
+            "avito_url": avito_link,
+            "cian_url": cian_link
+        }
+
