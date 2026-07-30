@@ -5,8 +5,7 @@ from aiogram import Bot, Dispatcher, Router, types
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-# Импортируем созданные модули напрямую из корня репозитория GitHub
-from database import init_db, async_session, UserProfile, SearchSlot
+# Импортируем только рабочие модули парсера и ИИ
 from scraper import XORealEstateScraper
 from ai_diplomat import XOAIDiplomat
 
@@ -23,16 +22,6 @@ diplomat = XOAIDiplomat()
 
 @router.message(Command("start"))
 async def start_cmd(message: types.Message):
-    try:
-        async with async_session() as session:
-            async with session.begin():
-                user = await session.get(UserProfile, message.from_user.id)
-                if not user:
-                    user = UserProfile(user_id=message.from_user.id, account_type="personal")
-                    session.add(user)
-    except Exception as e:
-        logger.error(f"Предупреждение сохранения профиля (используется кэш): {e}")
-    
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="🏠 Личный контур (ИИ-Риелтор)", callback_data="menu_personal"))
     builder.row(types.InlineKeyboardButton(text="👔 Бизнес контур (Риелторы / 10 слотов)", callback_data="menu_business"))
@@ -74,7 +63,6 @@ async def menu_callbacks(callback: types.CallbackQuery):
         await callback.message.edit_text(
             "🔍 **Разовый Кадастровый Экспресс-Аудит**\n\n"
             "Сквозной скрининг объекта по базам Росреестра, ЕГРН и ФССП на предмет арестов, скрытых долгов и залогов.\n\n"
-            "🔍 *Кадастровый контур полностью взведен.*\n"
             "📥 **Отправьте кадастровый номер объекта** в чат бота для автоматического выставления счета на 150 Telegram Stars...",
             reply_markup=builder.as_markup()
         )
@@ -82,9 +70,9 @@ async def menu_callbacks(callback: types.CallbackQuery):
 @router.callback_query(lambda c: c.data.startswith("run_search_"))
 async def run_search_callback(callback: types.CallbackQuery):
     data_parts = callback.data.split("_")
-    # Исправление синтаксического бага извлечения параметров
     region_key = data_parts[2]
-    target_region = "московская область" if region_key == "moscow" else region_key
+    
+    target_region = "московская область" if region_key == "moscow" else "сочи" if region_key == "sochi" else "казань"
     discount_trigger = int(data_parts[3])
     
     await callback.message.edit_text("⏳ *Асинхронный мульти-парсинг Авито/Циан запущен. Вычисляю дисконт рынка...*")
@@ -126,13 +114,13 @@ async def run_search_callback(callback: types.CallbackQuery):
 async def ai_script_callback(callback: types.CallbackQuery):
     data_parts = callback.data.split("_")
     region_key = data_parts[2]
-    region = "московская область" if region_key == "moscow" else region_key
+    region = "московская область" if region_key == "moscow" else "сочи" if region_key == "sochi" else "казань"
     price = int(data_parts[3])
     discount = int(data_parts[4])
     
     await callback.message.edit_text("🧠 *ИИ-Дипломат подключается к API OpenRouter. Claude 3.5 Sonnet формирует сценарий торга...*")
     
-    script_text = await diplomat.generate_negotiation_script("Коммерческий объект/Участок", price, region, discount)
+    script_text = await diplomat.generate_negotiation_script("Коммерческий объект", price, region, discount)
     
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="⬅️ Вернуться в Главное Меню", callback_data="back_to_main"))
@@ -154,7 +142,7 @@ async def stub_slot_callback(callback: types.CallbackQuery):
 async def back_callback(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="🏠 Личный контур (ИИ-Риелтор)", callback_data="menu_personal"))
-    builder.row(types.InlineKeyboardButton(text="👔 Бизнес контур (Риелторы / 10 slots)", callback_data="menu_business"))
+    builder.row(types.InlineKeyboardButton(text="👔 Бизнес контур (Риелторы / 10 слотов)", callback_data="menu_business"))
     builder.row(types.InlineKeyboardButton(text="🔍 Разовая проверка по кадастру", callback_data="menu_cadastr"))
     
     await callback.message.edit_text(
@@ -164,15 +152,10 @@ async def back_callback(callback: types.CallbackQuery):
     )
 
 async def main():
-    logger.info("Запуск монолита XO-Broker...")
-    try:
-        await init_db()
-        logger.info("Асинхронная база данных успешно инициализирована.")
-    except Exception as e:
-        logger.error(f"Предупреждение инициализации БД (используется локальный кэш): {e}")
-        
+    logger.info("Запуск автономного монолита XO-Broker...")
     dp.include_router(router)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
+
