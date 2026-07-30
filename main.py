@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher, Router, types
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-# Импортируем созданные нами модули бэкенда
+# Хирургический патч: импортируем модули напрямую из корня репозитория
 from database import init_db, async_session, UserProfile, SearchSlot
 from scraper import XORealEstateScraper
 from ai_diplomat import XOAIDiplomat
@@ -25,12 +25,15 @@ diplomat = XOAIDiplomat()
 @router.message(Command("start"))
 async def start_cmd(message: types.Message):
     # Автоматическая регистрация пользователя в базе данных при старте
-    async with async_session() as session:
-        async with session.begin():
-            user = await session.get(UserProfile, message.from_user.id)
-            if not user:
-                user = UserProfile(user_id=message.from_user.id, account_type="personal")
-                session.add(user)
+    try:
+        async with async_session() as session:
+            async with session.begin():
+                user = await session.get(UserProfile, message.from_user.id)
+                if not user:
+                    user = UserProfile(user_id=message.from_user.id, account_type="personal")
+                    session.add(user)
+    except Exception as e:
+        logger.error(f"Ошибка сохранения профиля: {e}")
     
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="🏠 Личный контур (ИИ-Риелтор)", callback_data="menu_personal"))
@@ -48,7 +51,6 @@ async def menu_callbacks(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     
     if callback.data == "menu_personal":
-        # Имитация выбора активного слота в Личном контуре
         builder.row(types.InlineKeyboardButton(text="📍 Запустить поиск: Московская обл.", callback_data="run_search_moscow_20"))
         builder.row(types.InlineKeyboardButton(text="📍 Запустить поиск: Сочи", callback_data="run_search_sochi_20"))
         builder.row(types.InlineKeyboardButton(text="⬅️ Назад в меню", callback_data="back_to_main"))
@@ -59,7 +61,6 @@ async def menu_callbacks(callback: types.CallbackQuery):
             reply_markup=builder.as_markup()
         )
     elif callback.data == "menu_business":
-        # Имитация управления 10 слотами профессионального риелтора
         builder.row(types.InlineKeyboardButton(text="🎰 Слот 1: Казань (Коммерция >30%)", callback_data="run_search_kazan_30"))
         builder.row(types.InlineKeyboardButton(text="🎰 Слот 2: Сочи (ИЖС/Земля >20%)", callback_data="run_search_sochi_20"))
         builder.row(types.InlineKeyboardButton(text="➕ Настроить пустой слот (3/10)", callback_data="stub_slot"))
@@ -81,14 +82,12 @@ async def menu_callbacks(callback: types.CallbackQuery):
 
 @router.callback_query(lambda c: c.data.startswith("run_search_"))
 async def run_search_callback(callback: types.CallbackQuery):
-    # Разбор параметров из callback_data: run_search_регион_дисконт
     data_parts = callback.data.split("_")
     target_region = "московская область" if data_parts[2] == "moscow" else data_parts[2]
     discount_trigger = int(data_parts[3])
     
     await callback.message.edit_text("⏳ *Асинхронный мульти-парсинг Авито/Циан запущен. Вычисляю дисконт рынка...*")
     
-    # Запуск нашего скрейпер-модуля №2
     deals = await scraper.analyze_and_filter(target_region, "commercial", discount_trigger)
     
     if not deals:
@@ -97,13 +96,10 @@ async def run_search_callback(callback: types.CallbackQuery):
         await callback.message.edit_text("❌ В данный момент новые объекты с дисконтом выше заданного порога не найдены.", reply_markup=builder.as_markup())
         return
         
-    deal = deals[0]  # Берем первый перехваченный горячий лот для демонстрации функционала
-    
-    # Математический расчет ROI инвестора прямо в коде
+    deal = deals[0]
     estimated_profit = int(deal["price"] * (deal["discount"] / 100))
     
     builder = InlineKeyboardBuilder()
-    # Передаем параметры лота в кнопку для генерации ИИ-скрипта торга в Модуль №3
     builder.row(types.InlineKeyboardButton(
         text="🔥 Сгенерировать ИИ-скрипт торга", 
         callback_data=f"ai_script_{data_parts[2]}_{deal['price']}_{deal['discount']}"
@@ -134,7 +130,6 @@ async def ai_script_callback(callback: types.CallbackQuery):
     
     await callback.message.edit_text("🧠 *ИИ-Дипломат подключается к API OpenRouter. Claude 3.5 Sonnet формирует сценарий торга...*")
     
-    # Запуск нашего ИИ-модуля №3
     script_text = await diplomat.generate_negotiation_script("Коммерческий объект/Участок", price, region, discount)
     
     builder = InlineKeyboardBuilder()
@@ -168,7 +163,6 @@ async def back_callback(callback: types.CallbackQuery):
 
 async def main():
     logger.info("Запуск монолита XO-Broker...")
-    # Инициализация асинхронных таблиц PostgreSQL при старте
     try:
         await init_db()
         logger.info("Асинхронная база данных успешно инициализирована.")
