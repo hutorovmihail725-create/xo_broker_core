@@ -6,14 +6,12 @@ logger = logging.getLogger("xo_broker.ai_diplomat")
 
 class XOAIDiplomat:
     def __init__(self):
-        # Чтение API-ключа OpenRouter из переменных окружения Railway
         self.api_key = os.getenv("OPENROUTER_API_KEY")
         self.api_url = "https://openrouter.ai"
 
     async def generate_negotiation_script(self, object_title: str, price: int, region: str, discount: int):
-        """Асинправная генерация индивидуального скрипта торга на основе уязвимостей лота"""
-        if not self.api_key or "placeholder" in self.api_key:
-            # Безопасный резервный локальный сценарий, если баланс OpenRouter равен 0
+        """Асинхронная генерация индивидуального скрипта торга на основе уязвимостей лота"""
+        if not self.api_key or "placeholder" in self.api_key or len(self.api_key) < 10:
             return (
                 f"🤖 **Локальный скрипт торга под объект:** {object_title}\n\n"
                 f"1. **Точка давления**: Объект в регионе {region.title()} продается с дисконтом -{discount}%. "
@@ -48,8 +46,7 @@ class XOAIDiplomat:
                         data = await response.json()
                         return data['choices'][0]['message']['content']
                     else:
-                        logger.error(f"Ошибка API OpenRouter: Статус {response.status}")
                         return "⚠️ Ошибка связи с ИИ-сервером OpenRouter. Используйте базовую тактику торга наличными."
         except Exception as e:
-            logger.error(f"Критический сбой модуля ИИ-Дипломат: {e}")
             return "⚠️ Не удалось сгенерировать скрипт торга. Проверьте сетевое подключение контейнера."
+
