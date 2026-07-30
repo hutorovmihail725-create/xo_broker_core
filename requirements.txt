@@ -3,3 +3,4 @@ pydantic-settings
 SQLAlchemy==2.0.31
 asyncpg==0.29.0
 aiohttp==3.10.1
+aiosqlite==2.0.0
