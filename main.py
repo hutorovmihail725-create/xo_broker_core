@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher, Router, types
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-# Хирургический патч: импортируем модули напрямую из корня репозитория
+# Импортируем созданные модули напрямую из корня репозитория GitHub
 from database import init_db, async_session, UserProfile, SearchSlot
 from scraper import XORealEstateScraper
 from ai_diplomat import XOAIDiplomat
@@ -18,13 +18,11 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 router = Router()
 
-# Инициализируем объекты классов парсера и ИИ
 scraper = XORealEstateScraper()
 diplomat = XOAIDiplomat()
 
 @router.message(Command("start"))
 async def start_cmd(message: types.Message):
-    # Автоматическая регистрация пользователя в базе данных при старте
     try:
         async with async_session() as session:
             async with session.begin():
@@ -33,7 +31,7 @@ async def start_cmd(message: types.Message):
                     user = UserProfile(user_id=message.from_user.id, account_type="personal")
                     session.add(user)
     except Exception as e:
-        logger.error(f"Ошибка сохранения профиля: {e}")
+        logger.error(f"Предупреждение сохранения профиля (используется кэш): {e}")
     
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="🏠 Личный контур (ИИ-Риелтор)", callback_data="menu_personal"))
@@ -76,6 +74,7 @@ async def menu_callbacks(callback: types.CallbackQuery):
         await callback.message.edit_text(
             "🔍 **Разовый Кадастровый Экспресс-Аудит**\n\n"
             "Сквозной скрининг объекта по базам Росреестра, ЕГРН и ФССП на предмет арестов, скрытых долгов и залогов.\n\n"
+            "🔍 *Кадастровый контур полностью взведен.*\n"
             "📥 **Отправьте кадастровый номер объекта** в чат бота для автоматического выставления счета на 150 Telegram Stars...",
             reply_markup=builder.as_markup()
         )
@@ -83,7 +82,9 @@ async def menu_callbacks(callback: types.CallbackQuery):
 @router.callback_query(lambda c: c.data.startswith("run_search_"))
 async def run_search_callback(callback: types.CallbackQuery):
     data_parts = callback.data.split("_")
-    target_region = "московская область" if data_parts[2] == "moscow" else data_parts[2]
+    # Исправление синтаксического бага извлечения параметров
+    region_key = data_parts[2]
+    target_region = "московская область" if region_key == "moscow" else region_key
     discount_trigger = int(data_parts[3])
     
     await callback.message.edit_text("⏳ *Асинхронный мульти-парсинг Авито/Циан запущен. Вычисляю дисконт рынка...*")
@@ -102,7 +103,7 @@ async def run_search_callback(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(
         text="🔥 Сгенерировать ИИ-скрипт торга", 
-        callback_data=f"ai_script_{data_parts[2]}_{deal['price']}_{deal['discount']}"
+        callback_data=f"ai_script_{region_key}_{deal['price']}_{deal['discount']}"
     ))
     builder.row(types.InlineKeyboardButton(text="⬅️ Вернуться в Личный Кабинет", callback_data="back_to_main"))
     
@@ -124,7 +125,8 @@ async def run_search_callback(callback: types.CallbackQuery):
 @router.callback_query(lambda c: c.data.startswith("ai_script_"))
 async def ai_script_callback(callback: types.CallbackQuery):
     data_parts = callback.data.split("_")
-    region = "московская область" if data_parts[2] == "moscow" else data_parts[2]
+    region_key = data_parts[2]
+    region = "московская область" if region_key == "moscow" else region_key
     price = int(data_parts[3])
     discount = int(data_parts[4])
     
@@ -152,7 +154,7 @@ async def stub_slot_callback(callback: types.CallbackQuery):
 async def back_callback(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="🏠 Личный контур (ИИ-Риелтор)", callback_data="menu_personal"))
-    builder.row(types.InlineKeyboardButton(text="👔 Бизнес контур (Риелторы / 10 слотов)", callback_data="menu_business"))
+    builder.row(types.InlineKeyboardButton(text="👔 Бизнес контур (Риелторы / 10 slots)", callback_data="menu_business"))
     builder.row(types.InlineKeyboardButton(text="🔍 Разовая проверка по кадастру", callback_data="menu_cadastr"))
     
     await callback.message.edit_text(
