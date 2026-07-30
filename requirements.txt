@@ -1,6 +1,3 @@
-# Спецификация среды сборки для Railway
-python_version==3.12.*
-
 aiogram==3.13.1
 pydantic-settings
 SQLAlchemy==2.0.31
