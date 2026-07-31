@@ -30,12 +30,13 @@ async def start_cmd(message: types.Message):
     
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="🏠 Личный контур (ИИ-Риелтор)", callback_data="open_personal"))
-    builder.row(types.InlineKeyboardButton(text="👔 Бизнес контур (Риелторы / 10 slots)", callback_data="open_business"))
+    builder.row(types.InlineKeyboardButton(text="👔 Бизнес контур (Риелторы / 10 слотов)", callback_data="open_business"))
     builder.row(types.InlineKeyboardButton(text="🔍 Разовая проверка по кадастру", callback_data="open_cadastr"))
     
     await message.answer(
-        "⚡ *ИИ Риелтор активирован*.\n\n"
+        "⚡ <b>ИИ Риелтор активирован</b>.\n\n"
         "Добро пожаловать в Личный Кабинет единой платформы недвижимости всей РФ. Выберите режим работы системы:",
+        parse_mode="HTML",
         reply_markup=builder.as_markup()
     )
 
@@ -44,9 +45,9 @@ async def back_to_main(callback: types.CallbackQuery):
     USER_STATES.pop(callback.from_user.id, None)
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="🏠 Личный контур (ИИ-Риелтор)", callback_data="open_personal"))
-    builder.row(types.InlineKeyboardButton(text="👔 Бизнес контур (Риелторы / 10 slots)", callback_data="open_business"))
+    builder.row(types.InlineKeyboardButton(text="👔 Бизнес контур (Риелторы / 10 слотов)", callback_data="open_business"))
     builder.row(types.InlineKeyboardButton(text="🔍 Разовая проверка по кадастру", callback_data="open_cadastr"))
-    await callback.message.edit_text("⚡ *ИИ Риелтор активирован*.\n\nВыберите режим работы системы:", reply_markup=builder.as_markup())
+    await callback.message.edit_text("⚡ <b>ИИ Риелтор активирован</b>.\n\nВыберите режим работы системы:", parse_mode="HTML", reply_markup=builder.as_markup())
 @router.callback_query(lambda c: c.data in ["open_personal", "open_business"])
 async def open_counters(callback: types.CallbackQuery):
     account_type = "personal" if callback.data == "open_personal" else "business"
@@ -56,12 +57,12 @@ async def open_counters(callback: types.CallbackQuery):
     if account_type == "personal":
         builder.row(types.InlineKeyboardButton(text="➕ Настроить проект поиска (1/1)", callback_data="set_region_start"))
         builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main"))
-        await callback.message.edit_text("🏠 **Контур «ЛИЧНЫЙ» (ИИ-Риелтор)**\n\nВам доступен 1 активный проект поиска. Нажмите кнопку ниже для настройки параметров гео-локации, типа объекта и ценового диапазона по всей РФ:", reply_markup=builder.as_markup())
+        await callback.message.edit_text("🏠 <b>Контур «ЛИЧНЫЙ» (ИИ-Риелтор)</b>\n\nВам доступен 1 активный проект поиска. Нажмите кнопку ниже для настройки параметров гео-локации, типа объекта и ценового диапазона по всей РФ:", parse_mode="HTML", reply_markup=builder.as_markup())
     else:
         for i in range(1, 6):
             builder.row(types.InlineKeyboardButton(text=f"🎰 Слот {i}", callback_data=f"set_slot_{i}"), types.InlineKeyboardButton(text=f"🎰 Слот {i+5}", callback_data=f"set_slot_{i+5}"))
         builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main"))
-        await callback.message.edit_text("👔 **Контур «БИЗНЕС» (Для крупных игроков)**\n\nВам доступно 10 одновременно активных слотов параллельного поиска. Выберите пустой слот для пошаговой конфигурации целей:", reply_markup=builder.as_markup())
+        await callback.message.edit_text("👔 <b>Контур «БИЗНЕС» (Для крупных игроков)</b>\n\nВам доступно 10 одновременно активных слотов параллельного поиска. Выберите пустой слот для пошаговой конфигурации целей:", parse_mode="HTML", reply_markup=builder.as_markup())
 
 @router.callback_query(lambda c: c.data.startswith("set_slot_") or c.data == "set_region_start")
 async def set_slot_index(callback: types.CallbackQuery):
@@ -78,7 +79,7 @@ async def set_slot_index(callback: types.CallbackQuery):
     builder.row(types.InlineKeyboardButton(text="⬅️ В меню", callback_data="back_to_main"))
     builder.adjust(2, 2, 1, 1)
     
-    await callback.message.edit_text("🌍 **КАСКАДНЫЙ ФИЛЬТР РФ: ШАГ 1 (Выбор субъекта)**\n\nВыберите интересующий регион из списка субъектов РФ:", reply_markup=builder.as_markup())
+    await callback.message.edit_text("🌍 <b>КАСКАДНЫЙ ФИЛЬТР РФ: ШАГ 1 (Выбор субъекта)</b>\n\nВыберите интересующий регион из списка субъектов РФ:", parse_mode="HTML", reply_markup=builder.as_markup())
 @router.callback_query(lambda c: c.data.startswith("geo_reg_"))
 async def geo_reg_callback(callback: types.CallbackQuery):
     reg_key = callback.data.split("_")[2]
@@ -90,12 +91,12 @@ async def geo_reg_callback(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="⬅️ Изменить регион", callback_data="set_region_start"))
     
-    # Возвращен красивый и правильный текст со второго фото
     await callback.message.edit_text(
-        f"📍 **РЕГИОН ЗАФИКСИРОВАН**: {region_name}\n\n"
-        f"🏙️ **ШАГ 2: ВВОД ЛОКАЦИИ (Все города, районы и поселки)**\n\n"
-        f"Напишите текстом в ответном сообщении название абсолютно **любого города, городского округа, района, поселка или деревни** внутри выбранного субъекта.\n\n"
-        f"*Пример ввода: Ликино-Дулево, Орехово-Зуево, Шатура, Раменское или Балашиха*",
+        f"📍 <b>РЕГИОН ЗАФИКСИРОВАН</b>: {region_name}\n\n"
+        f"🏙️ <b>ШАГ 2: ВВОД ЛОКАЦИИ (Все города, районы и поселки)</b>\n\n"
+        f"Напишите текстом в ответном сообщении название абсолютно <b>любого города, городского округа, района, поселка или деревни</b> внутри выбранного субъекта.\n\n"
+        f"<i>Пример ввода: Ликино-Дулево, Орехово-Зуево, Шатура, Раменское или Балашиха</i>",
+        parse_mode="HTML",
         reply_markup=builder.as_markup()
     )
 
@@ -105,7 +106,7 @@ async def process_city_text(message: types.Message):
     state = USER_STATES.get(message.from_user.id)
     state["city"] = user_input
     state["district"] = "Все районы"
-    state["step"] = "idle" # Сбрасываем шаг ожидания текста
+    state["step"] = "idle"
     
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="🏢 Квартира (Жилая)", callback_data="prop_type_квартира"))
@@ -113,17 +114,17 @@ async def process_city_text(message: types.Message):
     builder.row(types.InlineKeyboardButton(text="💼 Коммерческая недвижимость", callback_data="prop_type_коммерция"))
     
     await message.answer(
-        f"✅ **ГЕО-ЛОКАЦИЯ ПРОПИСАНА В СЛОТ:**\n"
+        f"✅ <b>ГЕО-ЛОКАЦИЯ ПРОПИСАНА В СЛОТ:</b>\n"
         f"• Регион: {state['region']}\n"
         f"• Населенный пункт: г./пос. {user_input}\n\n"
-        f"📋 **ШАГ 3: ТИП НЕДВИЖИМОСТИ**\n"
+        f"📋 <b>ШАГ 3: ТИП НЕДВИЖИМОСТИ</b>\n"
         f"Что именно мы ищем на площадках Авито и Циан?",
+        parse_mode="HTML",
         reply_markup=builder.as_markup()
     )
 
 @router.callback_query(lambda c: c.data.startswith("prop_type_"))
 async def prop_type_callback(callback: types.CallbackQuery):
-    # Жесткий фикс индекса, чтобы строка не рассыпалась в массив букв
     pt_name = callback.data.split("_")[2]
     USER_STATES[callback.from_user.id]["property_type"] = pt_name
     
@@ -131,7 +132,7 @@ async def prop_type_callback(callback: types.CallbackQuery):
         builder = InlineKeyboardBuilder()
         builder.row(types.InlineKeyboardButton(text="ИЖС (Индивидуальное строительство)", callback_data="land_st_ИЖС"))
         builder.row(types.InlineKeyboardButton(text="СНТ / ЛПХ / Сельхоз", callback_data="land_st_СНТ"))
-        await callback.message.edit_text("🌱 **ШАГ 4: СТАТУС ЗЕМЕЛЬНЫХ УЧАСТКОВ**\n\nКакая категория назначения земли требуется?", reply_markup=builder.as_markup())
+        await callback.message.edit_text("🌱 <b>ШАГ 4: СТАТУС ЗЕМЕЛЬНЫХ УЧАСТКОВ</b>\n\nКакая категория назначения земли требуется?", parse_mode="HTML", reply_markup=builder.as_markup())
     else:
         USER_STATES[callback.from_user.id]["land_status"] = "Нет"
         await ask_budget_handler(callback)
@@ -145,7 +146,7 @@ async def ask_budget_handler(callback: types.CallbackQuery):
     builder.row(types.InlineKeyboardButton(text="До 5 млн руб.", callback_data="budget_0_5000000"))
     builder.row(types.InlineKeyboardButton(text="От 5 до 15 млн руб.", callback_data="budget_5000000_15000000"))
     builder.row(types.InlineKeyboardButton(text="От 15 млн руб.+", callback_data="budget_15000000_100000000"))
-    await callback.message.edit_text("💰 **ФИНАЛЬНЫЙ ШАГ: ЦЕНОВОЙ ДИАПАЗОН БЮДЖЕТА**\n\nУкажите рамки стоимости для автоматической фильтрации лотов:", reply_markup=builder.as_markup())
+    await callback.message.edit_text("💰 <b>ШАГ 5: ЦЕНОВОЙ ДИАПАЗОН БЮДЖЕТА</b>\n\nУкажите рамки стоимости для автоматической фильтрации лотов:", parse_mode="HTML", reply_markup=builder.as_markup())
 
 @router.callback_query(lambda c: c.data.startswith("budget_"))
 async def budget_callback(callback: types.CallbackQuery):
@@ -169,29 +170,35 @@ async def budget_callback(callback: types.CallbackQuery):
     except Exception as e:
         logger.error(f"Предупреждение сохранения в БД: {e}")
     
-    await callback.message.edit_text("⏳ *Конфигурация слота сохранена в xo_base.db. Запускаю сквозной перехват ссылок всей РФ...*")
+    await callback.message.edit_text("⏳ <i>Конфигурация слота сохранена в xo_base.db. Запускаю сквозной перехват ссылок всей РФ...</i>", parse_mode="HTML")
     
     deal = await scraper.analyze_live_deal(state["region"], state["city"], state["district"], state["property_type"], min_p, max_p)
     estimated_profit = int(deal["price"] * (deal["discount"] / 100))
+    
+    # Полная очистка ссылок от лишних пробелов на стыке строк
+    a_url = str(deal['avito_url']).strip()
+    c_url = str(deal['cian_url']).strip()
     
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="🔥 Сгенерировать ИИ-скрипт торга", callback_data=f"airun_{deal['price']}_{deal['discount']}"))
     builder.row(types.InlineKeyboardButton(text="⬅️ В главное меню", callback_data="back_to_main"))
     
+    # ХИРУРГИЧЕСКИЙ ПАТЧ: Полный переход на HTML-теги <a> для 100% кликабельности ссылок
     await callback.message.edit_text(
-        f"🚨 **ГОРЯЧИЙ ОБЪЕКТ ПЕРЕХВАЧЕН С ПОИСКОВЫХ МАСОК!**\n\n"
-        f"📍 **Зона**: {deal['address']}\n"
-        f"📋 **Цель**: {deal['title']} (Статус земли: {state['land_status']})\n"
-        f"💰 **Цена лота**: {deal['price']:,} руб.\n"
-        f"📉 **Вычисленный дисконт**: -{deal['discount']}% ниже среднего рынка района!\n"
-        f"📈 **Средняя цена в этой локации**: {deal['market_avg']:,} руб.\n\n"
-        f"📊 **ФЛИП-АНАЛИТИКА И МАРЖА ХОЛДИНГА:**\n"
-        f"• Рентабельность (ROI): **Высокая**\n"
-        f"• Чистая прибыль при перепродаже: **+{estimated_profit:,} руб.**\n\n"
-        f"🔗 **ПРЯМЫЕ ССЫЛКИ НА ПЛОЩАДКИ С ФИЛЬТРАМИ:**\n"
-        f"• [Смотреть выдачу на Авито]({deal['avito_url']})\n"
-        f"• [Смотреть выдачу на Циан]({deal['cian_url']})\n",
-        parse_mode="Markdown",
+        f"🚨 <b>ГОРЯЧИЙ ОБЪЕКТ ПЕРЕХВАЧЕН С ПОИСКОВЫХ МАСОК!</b>\n\n"
+        f"📍 <b>Зона</b>: {deal['address']}\n"
+        f"📋 <b>Цель</b>: {deal['title']} (Статус земли: {state['land_status']})\n"
+        f"💰 <b>Цена лота</b>: {deal['price']:,} руб.\n"
+        f"📉 <b>Вычисленный дисконт</b>: -{deal['discount']}% ниже среднего рынка района!\n"
+        f"📈 <b>Средняя цена в этой локации</b>: {deal['market_avg']:,} руб.\n\n"
+        f"📊 <b>ФЛИП-АНАЛИТИКА И МАРЖА ХОЛДИНГА:</b>\n"
+        f"• Рентабельность (ROI): <b>Высокая</b>\n"
+        f"• Чистая прибыль при перепродаже: <b>+{estimated_profit:,} руб.</b>\n\n"
+        f"🔗 <b>ПРЯМЫЕ ССЫЛКИ НА ПЛОЩАДКИ С ФИЛЬТРАМИ:</b>\n"
+        f"• <a href='{a_url}'>Смотреть выдачу на Авито</a>\n"
+        f"• <a href='{c_url}'>Смотреть выдачу на Циан</a>\n",
+        parse_mode="HTML",
+        disable_web_page_preview=True,
         reply_markup=builder.as_markup()
     )
 
@@ -202,7 +209,7 @@ async def ai_run_callback(callback: types.CallbackQuery):
     discount = int(data_parts[2])
     state = USER_STATES.get(callback.from_user.id, {"city": "Выбранный город", "property_type": "Объект"})
     
-    await callback.message.edit_text("🧠 *ИИ-Дипломат подключается к API OpenRouter. Claude 3.5 Sonnet формирует сценарий торга...*")
+    await callback.message.edit_text("🧠 <i>ИИ-Дипломат подключается к API OpenRouter. Claude 3.5 Sonnet формирует сценарий торга...</i>", parse_mode="HTML")
     script_text = await diplomat.generate_negotiation_script(state["property_type"], price, state["city"], discount)
     
     builder = InlineKeyboardBuilder()
@@ -213,7 +220,7 @@ async def ai_run_callback(callback: types.CallbackQuery):
 async def open_cadastr_callback(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main"))
-    await callback.message.edit_text("🔍 **Разовый Кадастровый Экспресс-Аудит**\n\n📥 **Отправьте кадастровый номер объекта** в чат бота для автоматического выставления счета на 150 Telegram Stars...", reply_markup=builder.as_markup())
+    await callback.message.edit_text("🔍 <b>Разовый Кадастровый Экспресс-Аудит</b>\n\n📥 <b>Отправьте кадастровый номер объекта</b> в чат бота для автоматического выставления счета на 150 Telegram Stars...", parse_mode="HTML", reply_markup=builder.as_markup())
 
 async def main():
     logger.info("Запуск обновленного монолита XO-Broker...")
@@ -222,6 +229,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
