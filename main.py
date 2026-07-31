@@ -66,7 +66,7 @@ async def open_counters(callback: types.CallbackQuery):
 @router.callback_query(lambda c: c.data.startswith("set_slot_") or c.data == "set_region_start")
 async def set_slot_index(callback: types.CallbackQuery):
     if callback.data.startswith("set_slot_"):
-        slot_idx = int(callback.data.split("_")[2])
+        slot_idx = int(callback.data.split("_"))
         USER_STATES[callback.from_user.id] = {"account_type": "business", "slot_index": slot_idx, "step": "idle"}
         
     builder = InlineKeyboardBuilder()
@@ -83,7 +83,7 @@ async def set_slot_index(callback: types.CallbackQuery):
     await callback.message.edit_text("🌍 **КАСКАДНЫЙ ФИЛЬТР РФ: ШАГ 1 (Выбор субъекта)**\n\nВыберите интересующий регион из списка 89 субъектов РФ:", reply_markup=builder.as_markup())
 @router.callback_query(lambda c: c.data.startswith("geo_reg_"))
 async def geo_reg_callback(callback: types.CallbackQuery):
-    reg_key = callback.data.split("_")[2]
+    reg_key = callback.data.split("_")
     region_name = "Московская обл." if reg_key == "MskObl" else "Ленинградская обл." if reg_key == "SpbObl" else "Краснодарский край" if reg_key == "KrdKray" else "Татарстан" if reg_key == "Tatarstan" else "РФ"
     
     USER_STATES[callback.from_user.id]["region"] = region_name
@@ -123,7 +123,7 @@ async def process_city_text(message: types.Message):
 
 @router.callback_query(lambda c: c.data.startswith("prop_type_"))
 async def prop_type_callback(callback: types.CallbackQuery):
-    pt_name = callback.data.split("_")[2]
+    pt_name = callback.data.split("_")
     USER_STATES[callback.from_user.id]["property_type"] = pt_name
     
     if pt_name == "участок":
@@ -137,7 +137,7 @@ async def prop_type_callback(callback: types.CallbackQuery):
 
 @router.callback_query(lambda c: c.data.startswith("land_st_"))
 async def land_st_callback(callback: types.CallbackQuery):
-    USER_STATES[callback.from_user.id]["land_status"] = callback.data.split("_")[2]
+    USER_STATES[callback.from_user.id]["land_status"] = callback.data.split("_")
     await ask_budget_handler(callback)
 async def ask_budget_handler(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
@@ -221,4 +221,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
