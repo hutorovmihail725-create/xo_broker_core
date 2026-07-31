@@ -50,7 +50,7 @@ async def back_to_main(callback: types.CallbackQuery):
 @router.callback_query(lambda c: c.data in ["open_personal", "open_business"])
 async def open_counters(callback: types.CallbackQuery):
     account_type = "personal" if callback.data == "open_personal" else "business"
-    USER_STATES[callback.from_user.id] = {"account_type": account_type, "slot_index": 1}
+    USER_STATES[callback.from_user.id] = {"account_type": account_type, "slot_index": 1, "step": "idle"}
     
     builder = InlineKeyboardBuilder()
     if account_type == "personal":
@@ -67,108 +67,70 @@ async def open_counters(callback: types.CallbackQuery):
 async def set_slot_index(callback: types.CallbackQuery):
     if callback.data.startswith("set_slot_"):
         slot_idx = int(callback.data.split("_")[2])
-        USER_STATES[callback.from_user.id] = {"account_type": "business", "slot_index": slot_idx}
+        USER_STATES[callback.from_user.id] = {"account_type": "business", "slot_index": slot_idx, "step": "idle"}
         
-    # Глобальная матрица 89 субъектов РФ (основные макро-регионы)
     builder = InlineKeyboardBuilder()
-    builder.row(types.InlineKeyboardButton(text="Москва и Московская обл.", callback_data="geo_reg_MskObl"))
-    builder.row(types.InlineKeyboardButton(text="Санкт-Петербург и ЛО", callback_data="geo_reg_SpbObl"))
-    builder.row(types.InlineKeyboardButton(text="Краснодарский край (Сочи)", callback_data="geo_reg_KrdKray"))
+    builder.row(types.InlineKeyboardButton(text="Московская область и Москва", callback_data="geo_reg_MskObl"))
+    builder.row(types.InlineKeyboardButton(text="Ленинградская область и СПБ", callback_data="geo_reg_SpbObl"))
+    builder.row(types.InlineKeyboardButton(text="Краснодарский край", callback_data="geo_reg_KrdKray"))
     builder.row(types.InlineKeyboardButton(text="Республика Татарстан", callback_data="geo_reg_Tatarstan"))
-    builder.row(types.InlineKeyboardButton(text="Новосибирская область", callback_data="geo_reg_NskObl"))
-    builder.row(types.InlineKeyboardButton(text="Свердловская область", callback_data="geo_reg_SverdObl"))
     builder.row(types.InlineKeyboardButton(text="Нижегородская область", callback_data="geo_reg_NizhObl"))
-    builder.row(types.InlineKeyboardButton(text="Другой субъект РФ (Поиск текстом)", callback_data="geo_reg_Other"))
+    builder.row(types.InlineKeyboardButton(text="Свердловская область", callback_data="geo_reg_SverdObl"))
+    builder.row(types.InlineKeyboardButton(text="Любой другой субъект РФ", callback_data="geo_reg_Other"))
     builder.row(types.InlineKeyboardButton(text="⬅️ В меню", callback_data="back_to_main"))
     builder.adjust(2, 2, 2, 1, 1)
     
-    await callback.message.edit_text("🌍 **КАСКАДНЫЙ ФИЛЬТР РФ: ШАГ 1 (89 Субъектов)**\n\nВыберите интересующий Субъект Российской Федерации для привязки триггера перехвата:", reply_markup=builder.as_markup())
+    await callback.message.edit_text("🌍 **КАСКАДНЫЙ ФИЛЬТР РФ: ШАГ 1 (Выбор субъекта)**\n\nВыберите интересующий регион из списка 89 субъектов РФ:", reply_markup=builder.as_markup())
 @router.callback_query(lambda c: c.data.startswith("geo_reg_"))
 async def geo_reg_callback(callback: types.CallbackQuery):
     reg_key = callback.data.split("_")[2]
+    region_name = "Московская обл." if reg_key == "MskObl" else "Ленинградская обл." if reg_key == "SpbObl" else "Краснодарский край" if reg_key == "KrdKray" else "Татарстан" if reg_key == "Tatarstan" else "РФ"
     
-    if reg_key == "Other":
-        USER_STATES[callback.from_user.id]["step"] = "wait_text_geo"
-        builder = InlineKeyboardBuilder()
-        builder.row(types.InlineKeyboardButton(text="⬅️ Отмена", callback_data="set_region_start"))
-        await callback.message.edit_text("📥 **РУЧНОЙ ВВОД РЕГИОНА РФ**\n\nНапишите в ответном сообщении название любого города, поселка или деревни РФ. Система автоматически сгенерирует поисковые маски.", reply_markup=builder.as_markup())
-        return
-
-    region_name = "Московская обл." if reg_key == "MskObl" else "Краснодарский край" if reg_key == "KrdKray" else "Татарстан" if reg_key == "Tatarstan" else "Другой регион РФ"
     USER_STATES[callback.from_user.id]["region"] = region_name
+    USER_STATES[callback.from_user.id]["step"] = "wait_city_text"
     
     builder = InlineKeyboardBuilder()
-    # Логический разветвитель "Если-То" под твой кастомный запрос
-    if reg_key == "MskObl":
-        builder.row(types.InlineKeyboardButton(text="Москва", callback_data="geo_cit_Москва"))
-        builder.row(types.InlineKeyboardButton(text="Орехово-Зуево", callback_data="geo_cit_Орехово-Зуево"))
-        builder.row(types.InlineKeyboardButton(text="Ликино-Дулёво", callback_data="geo_cit_Ликино-Дулёво"))
-        builder.row(types.InlineKeyboardButton(text="Подольск", callback_data="geo_cit_Подольск"))
-        builder.row(types.InlineKeyboardButton(text="Балашиха", callback_data="geo_cit_Балашиха"))
-    elif reg_key == "KrdKray":
-        builder.row(types.InlineKeyboardButton(text="Сочи", callback_data="geo_cit_Сочи"))
-        builder.row(types.InlineKeyboardButton(text="Краснодар", callback_data="geo_cit_Краснодар"))
-        builder.row(types.InlineKeyboardButton(text="Анапа", callback_data="geo_cit_Анапа"))
-    else:
-        builder.row(types.InlineKeyboardButton(text="Казань", callback_data="geo_cit_Казань"))
-        builder.row(types.InlineKeyboardButton(text="Набережные Челны", callback_data="geo_cit_Челны"))
-        
-    builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="set_region_start"))
-    builder.adjust(2, 2, 1, 1)
-    await callback.message.edit_text(f"📍 **СУБЪЕКТ РФ**: {region_name}\n\n**ШАГ 2 (Каскад «Если-То»)**: Выберите муниципальное образование / город внутри этого субъекта:", reply_markup=builder.as_markup())
-
-@router.message(lambda m: USER_STATES.get(m.from_user.id, {}).get("step") == "wait_text_geo")
-async def process_text_geo(message: types.Message):
-    USER_STATES[message.from_user.id].update({"region": "РФ", "city": message.text.title(), "district": "Все районы"})
-    await ask_property_type_handler(message)
-
-@router.callback_query(lambda c: c.data.startswith("geo_cit_"))
-async def geo_cit_callback(callback: types.CallbackQuery):
-    city_name = callback.data.split("_")[2]
-    USER_STATES[callback.from_user.id]["city"] = city_name
+    builder.row(types.InlineKeyboardButton(text="⬅️ Изменить регион", callback_data="set_region_start"))
     
-    builder = InlineKeyboardBuilder()
-    if city_name == "Сочи":
-        builder.row(types.InlineKeyboardButton(text="Адлерский р-н", callback_data="geo_dst_Адлер"))
-        builder.row(types.InlineKeyboardButton(text="Центральный р-н", callback_data="geo_dst_Центральный"))
-    elif city_name == "Москва":
-        builder.row(types.InlineKeyboardButton(text="ЦАО округ", callback_data="geo_dst_ЦАО"))
-        builder.row(types.InlineKeyboardButton(text="ЗАО округ", callback_data="geo_dst_ЗАО"))
-    else:
-        builder.row(types.InlineKeyboardButton(text="Весь город / Все образования", callback_data="geo_dst_Все"))
-        
-    builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="set_region_start"))
-    await callback.message.edit_text(f"🏙️ **ГОРОД/ОКРУГ**: {city_name}\n\n**ШАГ 3**: Выберите интересующий район/городской округ:", reply_markup=builder.as_markup())
+    await callback.message.edit_text(
+        f"📍 **РЕГИОН ЗАФИКСИРОВАН**: {region_name}\n\n"
+        f"🏙️ **ШАГ 2: ВВОД ЛОКАЦИИ (Все города, районы и поселки)**\n\n"
+        f"Напишите текстом в ответном сообщении название абсолютно **любого города, городского округа, района, поселка или деревни** внутри выбранного субъекта.\n\n"
+        f"*Пример ввода: Ликино-Дулево, Орехово-Зуево, Шатура, Раменское или Балашиха*",
+        reply_markup=builder.as_markup()
+    )
 
-@router.callback_query(lambda c: c.data.startswith("geo_dst_"))
-async def geo_dst_callback(callback: types.CallbackQuery):
-    dst_name = callback.data.split("_")[2]
-    USER_STATES[callback.from_user.id]["district"] = dst_name
+@router.message(lambda m: USER_STATES.get(m.from_user.id, {}).get("step") == "wait_city_text")
+async def process_city_text(message: types.Message):
+    user_input = message.text.strip().title()
+    USER_STATES[message.from_user.id]["city"] = user_input
+    USER_STATES[message.from_user.id]["district"] = "Все районы"
+    USER_STATES[message.from_user.id]["step"] = "idle"
     
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="🏢 Квартира (Жилая)", callback_data="prop_type_квартира"))
     builder.row(types.InlineKeyboardButton(text="🌱 Земельный участок", callback_data="prop_type_участок"))
     builder.row(types.InlineKeyboardButton(text="💼 Коммерческая недвижимость", callback_data="prop_type_коммерция"))
-    builder.row(types.InlineKeyboardButton(text="⬅️ Отмена", callback_data="back_to_main"))
-    await callback.message.edit_text("📋 **ШАГ 4: ТИП НЕДВИЖИМОСТИ**\n\nЧто именно мы ищем на площадках Авито и Циан?", reply_markup=builder.as_markup())
-
-async def ask_property_type_handler(message: types.Message):
-    builder = InlineKeyboardBuilder()
-    builder.row(types.InlineKeyboardButton(text="🏢 Квартира (Жилая)", callback_data="prop_type_квартира"))
-    builder.row(types.InlineKeyboardButton(text="🌱 Земельный участок", callback_data="prop_type_участок"))
-    builder.row(types.InlineKeyboardButton(text="💼 Коммерческая недвижимость", callback_data="prop_type_коммерция"))
-    await message.answer("📋 **ШАГ 4: ТИП НЕДВИЖИМОСТИ**\n\nЧто именно мы ищем на площадках Авито и Циан?", reply_markup=builder.as_markup())
+    
+    await message.answer(
+        f"✅ **ГЕО-ЛОКАЦИЯ ПРОПИСАНА В СЛОТ:**\n"
+        f"• Регион: {USER_STATES[message.from_user.id]['region']}\n"
+        f"• Населенный пункт/Район: {user_input}\n\n"
+        f"📋 **ШАГ 3: ТИП НЕДВИЖИМОСТИ**\n"
+        f"Что именно мы ищем на площадках Авито и Циан?",
+        reply_markup=builder.as_markup()
+    )
 
 @router.callback_query(lambda c: c.data.startswith("prop_type_"))
 async def prop_type_callback(callback: types.CallbackQuery):
     pt_name = callback.data.split("_")[2]
     USER_STATES[callback.from_user.id]["property_type"] = pt_name
     
-    builder = InlineKeyboardBuilder()
     if pt_name == "участок":
+        builder = InlineKeyboardBuilder()
         builder.row(types.InlineKeyboardButton(text="ИЖС (Индивидуальное строительство)", callback_data="land_st_ИЖС"))
         builder.row(types.InlineKeyboardButton(text="СНТ / ЛПХ / Сельхоз", callback_data="land_st_СНТ"))
-        await callback.message.edit_text("🌱 **ШАГ 5: СТАТУС ЗЕМЕЛЬНЫХ УЧАСТКОВ**\n\nКакая категория назначения земли требуется?", reply_markup=builder.as_markup())
+        await callback.message.edit_text("🌱 **ШАГ 4: СТАТУС ЗЕМЕЛЬНЫХ УЧАСТКОВ**\n\nКакая категория назначения земли требуется?", reply_markup=builder.as_markup())
     else:
         USER_STATES[callback.from_user.id]["land_status"] = "Нет"
         await ask_budget_handler(callback)
@@ -182,7 +144,7 @@ async def ask_budget_handler(callback: types.CallbackQuery):
     builder.row(types.InlineKeyboardButton(text="До 5 млн руб.", callback_data="budget_0_5000000"))
     builder.row(types.InlineKeyboardButton(text="От 5 до 15 млн руб.", callback_data="budget_5000000_15000000"))
     builder.row(types.InlineKeyboardButton(text="От 15 млн руб.+", callback_data="budget_15000000_100000000"))
-    await callback.message.edit_text("💰 **ШАГ 6: ЦЕНОВОЙ ДИАПАЗОН БЮДЖЕТА**\n\nУкажите рамки стоимости для автоматической фильтрации лотов:", reply_markup=builder.as_markup())
+    await callback.message.edit_text("💰 **ШАГ 5: ЦЕНОВОЙ ДИАПАЗОН БЮДЖЕТА**\n\nУкажите рамки стоимости для автоматической фильтрации лотов:", reply_markup=builder.as_markup())
 
 @router.callback_query(lambda c: c.data.startswith("budget_"))
 async def budget_callback(callback: types.CallbackQuery):
