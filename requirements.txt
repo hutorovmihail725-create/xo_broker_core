@@ -1,7 +1,4 @@
-aiogram==3.13.1
-pydantic-settings
-SQLAlchemy==2.0.31
-asyncpg==0.29.0
-aiohttp==3.10.1
-aiosqlite==0.20.0
-beautifulsoup4==4.12.3
+aiogram==3.4.1
+aiosqlite==0.19.0
+pydantic-settings==2.2.1
+httpx==0.27.0
