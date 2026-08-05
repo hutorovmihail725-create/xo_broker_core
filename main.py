@@ -57,7 +57,7 @@ async def open_counters(callback: types.CallbackQuery):
     if account_type == "personal":
         builder.row(types.InlineKeyboardButton(text="➕ Настроить проект поиска (1/1)", callback_data="set_region_start"))
         builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main"))
-        await callback.message.edit_text("🏠 <b>Контур «ЛИЧНЫЙ» (ИИ-Риелтор)</b>\n\nВам доступен 1 активный проект поиска. Нажмите кнопку ниже для настройки параметров гео-локации, типа объекта и ценового диапазона по всей РФ:", parse_mode="HTML", reply_markup=builder.as_markup())
+        await callback.message.edit_text("🏠 <b>Контур «ЛИЧНЫЙ» (ИИ-Риелтор)</b>\n\nВам доступен 1 active проект поиска. Нажмите кнопку ниже для настройки параметров гео-локации, типа объекта и ценового диапазона по всей РФ:", parse_mode="HTML", reply_markup=builder.as_markup())
     else:
         for i in range(1, 6):
             builder.row(types.InlineKeyboardButton(text=f"🎰 Слот {i}", callback_data=f"set_slot_{i}"), types.InlineKeyboardButton(text=f"🎰 Слот {i+5}", callback_data=f"set_slot_{i+5}"))
@@ -95,7 +95,7 @@ async def geo_reg_callback(callback: types.CallbackQuery):
         f"📍 <b>РЕГИОН ЗАФИКСИРОВАН</b>: {region_name}\n\n"
         f"🏙️ <b>ШАГ 2: ВВОД ЛОКАЦИИ (Все города, районы и поселки)</b>\n\n"
         f"Напишите текстом в ответном сообщении название абсолютно <b>любого города, городского округа, района, поселка или деревни</b> внутри выбранного субъекта.\n\n"
-        f"<i>Пример ввода: Ликино-Дулево, Орехово-Зуево, Шатура, Раменское или Балашиха</i>",
+        f"<i>Пример ввода: Ликино-Дулево, Орехово-Зуево, Куровское, Раменское или Подольск</i>",
         parse_mode="HTML",
         reply_markup=builder.as_markup()
     )
@@ -175,15 +175,13 @@ async def budget_callback(callback: types.CallbackQuery):
     deal = await scraper.analyze_live_deal(state["region"], state["city"], state["district"], state["property_type"], min_p, max_p)
     estimated_profit = int(deal["price"] * (deal["discount"] / 100))
     
-    # Полная очистка ссылок от лишних пробелов на стыке строк
-    a_url = str(deal['avito_url']).strip()
-    c_url = str(deal['cian_url']).strip()
+    a_url = str(deal['avito_url']).strip().replace(" ", "")
+    c_url = str(deal['cian_url']).strip().replace(" ", "")
     
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="🔥 Сгенерировать ИИ-скрипт торга", callback_data=f"airun_{deal['price']}_{deal['discount']}"))
     builder.row(types.InlineKeyboardButton(text="⬅️ В главное меню", callback_data="back_to_main"))
     
-    # ХИРУРГИЧЕСКИЙ ПАТЧ: Полный переход на HTML-теги <a> для 100% кликабельности ссылок
     await callback.message.edit_text(
         f"🚨 <b>ГОРЯЧИЙ ОБЪЕКТ ПЕРЕХВАЧЕН С ПОИСКОВЫХ МАСОК!</b>\n\n"
         f"📍 <b>Зона</b>: {deal['address']}\n"
@@ -195,8 +193,8 @@ async def budget_callback(callback: types.CallbackQuery):
         f"• Рентабельность (ROI): <b>Высокая</b>\n"
         f"• Чистая прибыль при перепродаже: <b>+{estimated_profit:,} руб.</b>\n\n"
         f"🔗 <b>ПРЯМЫЕ ССЫЛКИ НА ПЛОЩАДКИ С ФИЛЬТРАМИ:</b>\n"
-        f"• <a href='{a_url}'>Смотреть выдачу на Авито</a>\n"
-        f"• <a href='{c_url}'>Смотреть выдачу на Циан</a>\n",
+        f"• <a href=\"{a_url}\">Смотреть выдачу на Авито</a>\n"
+        f"• <a href=\"{c_url}\">Смотреть выдачу на Циан</a>\n",
         parse_mode="HTML",
         disable_web_page_preview=True,
         reply_markup=builder.as_markup()
@@ -229,7 +227,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
-
 
