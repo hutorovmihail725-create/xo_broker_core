@@ -1,1 +1,16 @@
 
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Локальная база данных (создается заново на сервере при первом запуске)
+xo_base.db
+
+# IDE
+.vscode/
+.idea/
