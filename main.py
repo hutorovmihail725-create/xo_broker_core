@@ -57,7 +57,7 @@ async def open_counters(callback: types.CallbackQuery):
     if account_type == "personal":
         builder.row(types.InlineKeyboardButton(text="➕ Настроить проект поиска (1/1)", callback_data="set_region_start"))
         builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main"))
-        await callback.message.edit_text("🏠 <b>Контур «ЛИЧНЫЙ» (ИИ-Риелтор)</b>\n\nВам доступен 1 active проект поиска. Нажмите кнопку ниже для настройки параметров гео-локации, типа объекта и ценового диапазона по всей РФ:", parse_mode="HTML", reply_markup=builder.as_markup())
+        await callback.message.edit_text("🏠 <b>Контур «ЛИЧНЫЙ» (ИИ-Риелтор)</b>\n\nВам доступен 1 активный проект поиска. Нажмите кнопку ниже для настройки параметров гео-локации, типа объекта и ценового диапазона по всей РФ:", parse_mode="HTML", reply_markup=builder.as_markup())
     else:
         for i in range(1, 6):
             builder.row(types.InlineKeyboardButton(text=f"🎰 Слот {i}", callback_data=f"set_slot_{i}"), types.InlineKeyboardButton(text=f"🎰 Слот {i+5}", callback_data=f"set_slot_{i+5}"))
@@ -179,10 +179,13 @@ async def budget_callback(callback: types.CallbackQuery):
     c_url = str(deal['cian_url']).strip().replace(" ", "")
     
     builder = InlineKeyboardBuilder()
+    builder.row(types.InlineKeyboardButton(text="🎯 Открыть живую выдачу Авито", url=a_url))
+    builder.row(types.InlineKeyboardButton(text="🎯 Открыть живую выдачу Циан", url=c_url))
     builder.row(types.InlineKeyboardButton(text="🔥 Сгенерировать ИИ-скрипт торга", callback_data=f"airun_{deal['price']}_{deal['discount']}"))
     builder.row(types.InlineKeyboardButton(text="⬅️ В главное меню", callback_data="back_to_main"))
+    builder.adjust(1, 1, 1, 1)
     
-    await callback.message.edit_text(
+    await callback.message.answer(
         f"🚨 <b>ГОРЯЧИЙ ОБЪЕКТ ПЕРЕХВАЧЕН С ПОИСКОВЫХ МАСОК!</b>\n\n"
         f"📍 <b>Зона</b>: {deal['address']}\n"
         f"📋 <b>Цель</b>: {deal['title']} (Статус земли: {state['land_status']})\n"
@@ -192,11 +195,8 @@ async def budget_callback(callback: types.CallbackQuery):
         f"📊 <b>ФЛИП-АНАЛИТИКА И МАРЖА ХОЛДИНГА:</b>\n"
         f"• Рентабельность (ROI): <b>Высокая</b>\n"
         f"• Чистая прибыль при перепродаже: <b>+{estimated_profit:,} руб.</b>\n\n"
-        f"🔗 <b>ПРЯМЫЕ ССЫЛКИ НА ПЛОЩАДКИ С ФИЛЬТРАМИ:</b>\n"
-        f"• <a href=\"{a_url}\">Смотреть выдачу на Авито</a>\n"
-        f"• <a href=\"{c_url}\">Смотреть выдачу на Циан</a>\n",
+        f"🔗 Нажмите на инлайн-кнопки ниже, чтобы открыть актуальные объявления прямо сейчас:",
         parse_mode="HTML",
-        disable_web_page_preview=True,
         reply_markup=builder.as_markup()
     )
 
@@ -227,4 +227,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
